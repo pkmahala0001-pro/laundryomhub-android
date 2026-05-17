@@ -23,7 +23,7 @@ jobs:
       - name: Install SDK tools
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Create app module files
         run: |
@@ -37,11 +37,11 @@ jobs:
           { echo "plugins { id 'com.android.application' }"
             echo "android {"
             echo "  namespace 'com.laundryomhub.app'"
-            echo "  compileSdk 34"
+            echo "  compileSdk 35"
             echo "  defaultConfig {"
             echo "    applicationId \"com.laundryomhub.app\""
             echo "    minSdk 21"
-            echo "    targetSdk 34"
+            echo "    targetSdk 35"
             echo "    versionCode 1"
             echo "    versionName \"1.0.0\""
             echo "  }"
