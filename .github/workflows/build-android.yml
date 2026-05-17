@@ -1,0 +1,60 @@
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli@latest
+
+      - name: Generate Keystore
+        run: |
+          keytool -genkeypair \
+            -alias laundryomhub \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -keystore twa-build/android.keystore \
+            -storepass laundry2024 \
+            -keypass laundry2024 \
+            -dname "CN=LaundryOmHub, OU=App, O=LaundryOmHub, L=Jaipur, S=Rajasthan, C=IN" \
+            -noprompt
+
+      - name: Build AAB with Bubblewrap
+        working-directory: twa-build
+        run: |
+          bubblewrap build \
+            --manifest twa-manifest.json \
+            --skipPwaValidation
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaundryOmHub-release
+          path: |
+            twa-build/app-release-bundle.aab
+            twa-build/*.aab
+          retention-days: 30
+
+      - name: Upload Keystore (SAVE THIS!)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-keystore
+          path: twa-build/android.keystore
+          retention-days: 30
