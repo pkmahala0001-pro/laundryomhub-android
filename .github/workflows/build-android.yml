@@ -31,12 +31,12 @@ jobs:
           echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
           echo "$HOME/android-sdk/build-tools/34.0.0" >> $GITHUB_PATH
 
-      - name: Accept Android licenses & install SDK tools
+      - name: Accept Android licenses and install SDK tools
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      - name: Install Node & Bubblewrap
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -47,10 +47,10 @@ jobs:
       - name: Configure Bubblewrap
         run: |
           mkdir -p $HOME/.bubblewrap
-          cat > $HOME/.bubblewrap/config.json << EOF
+          cat > $HOME/.bubblewrap/config.json << 'EOF'
           {
-            "jdkPath": "$JAVA_HOME",
-            "androidSdkPath": "$HOME/android-sdk"
+            "jdkPath": "/opt/hostedtoolcache/Java_Temurin_jdk/17.0.15-6/x64",
+            "androidSdkPath": "/home/runner/android-sdk"
           }
           EOF
 
@@ -67,9 +67,12 @@ jobs:
             -dname "CN=LaundryOmHub, OU=App, O=LaundryOmHub, L=Jaipur, S=Rajasthan, C=IN" \
             -noprompt
 
+      - name: Create TWA project directory
+        run: mkdir -p $GITHUB_WORKSPACE/twa-project
+
       - name: Init TWA project
         run: |
-          bubblewrap init \
+          echo "y" | bubblewrap init \
             --manifest https://laundryomhub.com/manifest.json \
             --directory $GITHUB_WORKSPACE/twa-project
 
@@ -94,5 +97,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-keystore
-          path: android.keystore
+          path: ${{ github.workspace }}/android.keystore
           retention-days: 30
