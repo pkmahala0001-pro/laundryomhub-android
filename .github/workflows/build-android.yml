@@ -25,15 +25,100 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Download and resize icons
+      - name: Create app module files
         run: |
-          sudo apt-get install -y imagemagick curl
-          curl -L "https://laundryomhub.com/icon-512.png" -o /tmp/icon.png 2>/dev/null || \
-            convert -size 512x512 xc:#16a34a /tmp/icon.png
+          mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi
           mkdir -p app/src/main/res/mipmap-xhdpi
           mkdir -p app/src/main/res/mipmap-xxhdpi
           mkdir -p app/src/main/res/mipmap-xxxhdpi
+
+          cat > app/build.gradle << 'ENDOFFILE'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.laundryomhub.app'
+            compileSdk 34
+            defaultConfig {
+              applicationId "com.laundryomhub.app"
+              minSdk 21
+              targetSdk 34
+              versionCode 1
+              versionName "1.0.0"
+            }
+            buildTypes { release { minifyEnabled false } }
+            compileOptions {
+              sourceCompatibility JavaVersion.VERSION_1_8
+              targetCompatibility JavaVersion.VERSION_1_8
+            }
+          }
+          dependencies {
+            implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          ENDOFFILE
+
+          cat > app/src/main/AndroidManifest.xml << 'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:label="LaundryOmHub" android:icon="@mipmap/ic_launcher"
+              android:theme="@style/AppTheme" android:allowBackup="true">
+              <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+                android:exported="true" android:screenOrientation="portrait">
+                <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                  android:value="https://laundryomhub.com/" />
+                <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+                  android:resource="@color/colorPrimary" />
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+                <intent-filter android:autoVerify="true">
+                  <action android:name="android.intent.action.VIEW" />
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <category android:name="android.intent.category.BROWSABLE" />
+                  <data android:scheme="https" android:host="laundryomhub.com" />
+                </intent-filter>
+              </activity>
+              <service android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+                android:exported="true" android:enabled="true">
+                <intent-filter>
+                  <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+                  <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+              </service>
+            </application>
+          </manifest>
+          ENDOFFILE
+
+          cat > app/src/main/res/values/strings.xml << 'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources><string name="app_name">LaundryOmHub</string></resources>
+          ENDOFFILE
+
+          cat > app/src/main/res/values/colors.xml << 'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <color name="colorPrimary">#16a34a</color>
+            <color name="colorBackground">#f0fdf4</color>
+          </resources>
+          ENDOFFILE
+
+          cat > app/src/main/res/values/styles.xml << 'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+              <item name="android:windowBackground">@color/colorBackground</item>
+              <item name="colorPrimary">@color/colorPrimary</item>
+            </style>
+          </resources>
+          ENDOFFILE
+
+      - name: Download app icon
+        run: |
+          sudo apt-get install -y imagemagick curl
+          curl -L "https://laundryomhub.com/icon-512.png" -o /tmp/icon.png 2>/dev/null || \
+            convert -size 512x512 xc:#16a34a /tmp/icon.png
           convert /tmp/icon.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert /tmp/icon.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert /tmp/icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
@@ -44,17 +129,15 @@ jobs:
 
       - name: Generate Keystore
         run: |
-          keytool -genkeypair \
-            -alias laundryomhub -keyalg RSA -keysize 2048 -validity 10000 \
-            -keystore $GITHUB_WORKSPACE/android.keystore \
+          keytool -genkeypair -alias laundryomhub -keyalg RSA -keysize 2048 \
+            -validity 10000 -keystore $GITHUB_WORKSPACE/android.keystore \
             -storepass laundry2024 -keypass laundry2024 \
-            -dname "CN=LaundryOmHub,O=LaundryOmHub,L=Jaipur,S=Rajasthan,C=IN" \
-            -noprompt
+            -dname "CN=LaundryOmHub,O=LaundryOmHub,L=Jaipur,S=Rajasthan,C=IN" -noprompt
 
       - name: Build signed AAB
         run: |
           chmod +x gradlew
-          ./gradlew bundleRelease \
+          ./gradlew :app:bundleRelease \
             -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android.keystore \
             -Pandroid.injected.signing.store.password=laundry2024 \
             -Pandroid.injected.signing.key.alias=laundryomhub \
