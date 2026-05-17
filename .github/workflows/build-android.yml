@@ -11,17 +11,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wget unzip
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdtools.zip
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          unzip -q cmdtools.zip -d $HOME/android-sdk/cmdline-tools
+          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/build-tools/34.0.0" >> $GITHUB_PATH
+
+      - name: Accept Android licenses & install SDK tools
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Install Node & Bubblewrap
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli@latest
+        run: npm install -g @bubblewrap/cli
+
+      - name: Configure Bubblewrap
+        run: |
+          mkdir -p $HOME/.bubblewrap
+          cat > $HOME/.bubblewrap/config.json << EOF
+          {
+            "jdkPath": "$JAVA_HOME",
+            "androidSdkPath": "$HOME/android-sdk"
+          }
+          EOF
 
       - name: Generate Keystore
         run: |
@@ -30,31 +61,38 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -keystore twa-build/android.keystore \
+            -keystore $GITHUB_WORKSPACE/android.keystore \
             -storepass laundry2024 \
             -keypass laundry2024 \
             -dname "CN=LaundryOmHub, OU=App, O=LaundryOmHub, L=Jaipur, S=Rajasthan, C=IN" \
             -noprompt
 
-      - name: Build AAB with Bubblewrap
-        working-directory: twa-build
+      - name: Init TWA project
         run: |
-          bubblewrap build \
-            --manifest twa-manifest.json \
-            --skipPwaValidation
+          bubblewrap init \
+            --manifest https://laundryomhub.com/manifest.json \
+            --directory $GITHUB_WORKSPACE/twa-project
+
+      - name: Build AAB
+        working-directory: ${{ github.workspace }}/twa-project
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android.keystore \
+            -Pandroid.injected.signing.store.password=laundry2024 \
+            -Pandroid.injected.signing.key.alias=laundryomhub \
+            -Pandroid.injected.signing.key.password=laundry2024
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: LaundryOmHub-release
-          path: |
-            twa-build/app-release-bundle.aab
-            twa-build/*.aab
+          path: ${{ github.workspace }}/twa-project/app/build/outputs/bundle/release/
           retention-days: 30
 
-      - name: Upload Keystore (SAVE THIS!)
+      - name: Upload Keystore
         uses: actions/upload-artifact@v4
         with:
           name: android-keystore
-          path: twa-build/android.keystore
+          path: android.keystore
           retention-days: 30
