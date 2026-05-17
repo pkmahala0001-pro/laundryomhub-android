@@ -25,107 +25,99 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Create app module files
+      - name: Create app module and Gradle wrapper
         run: |
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi
           mkdir -p app/src/main/res/mipmap-xhdpi
           mkdir -p app/src/main/res/mipmap-xxhdpi
           mkdir -p app/src/main/res/mipmap-xxxhdpi
+          mkdir -p gradle/wrapper
 
-          cat > app/build.gradle << 'ENDOFFILE'
-          plugins { id 'com.android.application' }
-          android {
-            namespace 'com.laundryomhub.app'
-            compileSdk 34
-            defaultConfig {
-              applicationId "com.laundryomhub.app"
-              minSdk 21
-              targetSdk 34
-              versionCode 1
-              versionName "1.0.0"
-            }
-            buildTypes { release { minifyEnabled false } }
-            compileOptions {
-              sourceCompatibility JavaVersion.VERSION_1_8
-              targetCompatibility JavaVersion.VERSION_1_8
-            }
-          }
-          dependencies {
-            implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-          }
-          ENDOFFILE
+          cat > app/build.gradle << 'GRADLE'
+plugins { id 'com.android.application' }
+android {
+  namespace 'com.laundryomhub.app'
+  compileSdk 34
+  defaultConfig {
+    applicationId "com.laundryomhub.app"
+    minSdk 21
+    targetSdk 34
+    versionCode 1
+    versionName "1.0.0"
+  }
+  buildTypes { release { minifyEnabled false } }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+}
+dependencies {
+  implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+  implementation 'androidx.appcompat:appcompat:1.6.1'
+}
+GRADLE
 
-          cat > app/src/main/AndroidManifest.xml << 'ENDOFFILE'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.INTERNET" />
-            <application android:label="LaundryOmHub" android:icon="@mipmap/ic_launcher"
-              android:theme="@style/AppTheme" android:allowBackup="true">
-              <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
-                android:exported="true" android:screenOrientation="portrait">
-                <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
-                  android:value="https://laundryomhub.com/" />
-                <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
-                  android:resource="@color/colorPrimary" />
-                <intent-filter>
-                  <action android:name="android.intent.action.MAIN" />
-                  <category android:name="android.intent.category.LAUNCHER" />
-                </intent-filter>
-                <intent-filter android:autoVerify="true">
-                  <action android:name="android.intent.action.VIEW" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-                  <data android:scheme="https" android:host="laundryomhub.com" />
-                </intent-filter>
-              </activity>
-              <service android:name="com.google.androidbrowserhelper.trusted.DelegationService"
-                android:exported="true" android:enabled="true">
-                <intent-filter>
-                  <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                </intent-filter>
-              </service>
-            </application>
-          </manifest>
-          ENDOFFILE
+          cat > app/src/main/AndroidManifest.xml << 'MANIFEST'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <application android:label="LaundryOmHub" android:icon="@mipmap/ic_launcher"
+    android:theme="@style/AppTheme" android:allowBackup="true">
+    <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+      android:exported="true" android:screenOrientation="portrait">
+      <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
+        android:value="https://laundryomhub.com/" />
+      <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+        android:resource="@color/colorPrimary" />
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="https" android:host="laundryomhub.com" />
+      </intent-filter>
+    </activity>
+    <service android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+      android:exported="true" android:enabled="true">
+      <intent-filter>
+        <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+    </service>
+  </application>
+</manifest>
+MANIFEST
 
-          cat > app/src/main/res/values/strings.xml << 'ENDOFFILE'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources><string name="app_name">LaundryOmHub</string></resources>
-          ENDOFFILE
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">LaundryOmHub</string></resources>' > app/src/main/res/values/strings.xml
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="colorPrimary">#16a34a</color><color name="colorBackground">#f0fdf4</color></resources>' > app/src/main/res/values/colors.xml
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><style name="AppTheme" parent="Theme.AppCompat.NoActionBar"><item name="android:windowBackground">@color/colorBackground</item><item name="colorPrimary">@color/colorPrimary</item></style></resources>' > app/src/main/res/values/styles.xml
 
-          cat > app/src/main/res/values/colors.xml << 'ENDOFFILE'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-            <color name="colorPrimary">#16a34a</color>
-            <color name="colorBackground">#f0fdf4</color>
-          </resources>
-          ENDOFFILE
+          cat > gradle/wrapper/gradle-wrapper.properties << 'PROPS'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+PROPS
 
-          cat > app/src/main/res/values/styles.xml << 'ENDOFFILE'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-            <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
-              <item name="android:windowBackground">@color/colorBackground</item>
-              <item name="colorPrimary">@color/colorPrimary</item>
-            </style>
-          </resources>
-          ENDOFFILE
+          curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.6.0/gradlew" -o gradlew
+          curl -sL "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar" \
+            -o gradle/wrapper/gradle-wrapper.jar
+          chmod +x gradlew
 
       - name: Download app icon
         run: |
-          sudo apt-get install -y imagemagick curl
+          sudo apt-get install -y imagemagick
           curl -L "https://laundryomhub.com/icon-512.png" -o /tmp/icon.png 2>/dev/null || \
             convert -size 512x512 xc:#16a34a /tmp/icon.png
           convert /tmp/icon.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert /tmp/icon.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert /tmp/icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert /tmp/icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-      - name: Setup Gradle wrapper
-        run: gradle wrapper --gradle-version 8.1.1
 
       - name: Generate Keystore
         run: |
@@ -136,7 +128,6 @@ jobs:
 
       - name: Build signed AAB
         run: |
-          chmod +x gradlew
           ./gradlew :app:bundleRelease \
             -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android.keystore \
             -Pandroid.injected.signing.store.password=laundry2024 \
