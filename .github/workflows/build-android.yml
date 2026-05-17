@@ -18,66 +18,40 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y wget unzip
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdtools.zip
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          unzip -q cmdtools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/build-tools/34.0.0" >> $GITHUB_PATH
+        uses: android-actions/setup-android@v3
 
-      - name: Accept Android licenses and install SDK tools
+      - name: Install SDK tools
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-
-      - name: Configure Bubblewrap
+      - name: Download and resize icons
         run: |
-          mkdir -p $HOME/.bubblewrap
-          cat > $HOME/.bubblewrap/config.json << 'EOF'
-          {
-            "jdkPath": "/opt/hostedtoolcache/Java_Temurin_jdk/17.0.15-6/x64",
-            "androidSdkPath": "/home/runner/android-sdk"
-          }
-          EOF
+          sudo apt-get install -y imagemagick curl
+          curl -L "https://laundryomhub.com/icon-512.png" -o /tmp/icon.png 2>/dev/null || \
+            convert -size 512x512 xc:#16a34a /tmp/icon.png
+          mkdir -p app/src/main/res/mipmap-hdpi
+          mkdir -p app/src/main/res/mipmap-xhdpi
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/mipmap-xxxhdpi
+          convert /tmp/icon.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Setup Gradle wrapper
+        run: gradle wrapper --gradle-version 8.1.1
 
       - name: Generate Keystore
         run: |
           keytool -genkeypair \
-            -alias laundryomhub \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
+            -alias laundryomhub -keyalg RSA -keysize 2048 -validity 10000 \
             -keystore $GITHUB_WORKSPACE/android.keystore \
-            -storepass laundry2024 \
-            -keypass laundry2024 \
-            -dname "CN=LaundryOmHub, OU=App, O=LaundryOmHub, L=Jaipur, S=Rajasthan, C=IN" \
+            -storepass laundry2024 -keypass laundry2024 \
+            -dname "CN=LaundryOmHub,O=LaundryOmHub,L=Jaipur,S=Rajasthan,C=IN" \
             -noprompt
 
-      - name: Create TWA project directory
-        run: mkdir -p $GITHUB_WORKSPACE/twa-project
-
-      - name: Init TWA project
-        run: |
-          echo "y" | bubblewrap init \
-            --manifest https://laundryomhub.com/manifest.json \
-            --directory $GITHUB_WORKSPACE/twa-project
-
-      - name: Build AAB
-        working-directory: ${{ github.workspace }}/twa-project
+      - name: Build signed AAB
         run: |
           chmod +x gradlew
           ./gradlew bundleRelease \
@@ -90,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LaundryOmHub-release
-          path: ${{ github.workspace }}/twa-project/app/build/outputs/bundle/release/
+          path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
 
       - name: Upload Keystore
