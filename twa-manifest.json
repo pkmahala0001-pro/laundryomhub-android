@@ -1,0 +1,42 @@
+{
+  "packageId": "com.laundryomhub.app",
+  "host": "laundryomhub.com",
+  "name": "LaundryOmHub",
+  "launcherName": "LaundryOM",
+  "display": "standalone",
+  "themeColor": "#16a34a",
+  "themeColorDark": "#15803d",
+  "navigationColor": "#16a34a",
+  "navigationColorDark": "#15803d",
+  "navigationDividerColor": "#16a34a",
+  "navigationDividerColorDark": "#15803d",
+  "backgroundColor": "#f0fdf4",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://laundryomhub.com/icon-512.png",
+  "maskableIconUrl": "https://laundryomhub.com/icon-512.png",
+  "monochromeIconUrl": "https://laundryomhub.com/icon-512.png",
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "signingKey": {
+    "path": "android.keystore",
+    "alias": "laundryomhub"
+  },
+  "splashScreenFadeOutDuration": 300,
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://laundryomhub.com/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "serviceAccountJsonFile": "",
+  "shortcuts": [
+    {
+      "name": "Order Now",
+      "short_name": "Order",
+      "url": "/home",
+      "icons": [{ "src": "https://laundryomhub.com/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
