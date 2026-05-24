@@ -132,7 +132,7 @@ jobs:
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             echo "Using stored keystore from secret..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $GITHUB_WORKSPACE/android.keystore
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r\n ' | base64 -d > $GITHUB_WORKSPACE/android.keystore
           else
             echo "Generating new keystore (first run)..."
             keytool -genkeypair -alias laundryomhub -keyalg RSA -keysize 2048 \
