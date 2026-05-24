@@ -42,8 +42,8 @@ jobs:
             echo "    applicationId \"com.laundryomhub.app\""
             echo "    minSdk 21"
             echo "    targetSdk 35"
-            echo "    versionCode 1"
-            echo "    versionName \"1.0.0\""
+            echo "    versionCode 2"
+            echo "    versionName \"1.0.1\""
             echo "  }"
             echo "  buildTypes { release { minifyEnabled false } }"
             echo "  compileOptions {"
@@ -128,12 +128,26 @@ jobs:
           convert /tmp/icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert /tmp/icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Generate Keystore
+      - name: Setup Keystore
         run: |
-          keytool -genkeypair -alias laundryomhub -keyalg RSA -keysize 2048 \
-            -validity 10000 -keystore $GITHUB_WORKSPACE/android.keystore \
-            -storepass laundry2024 -keypass laundry2024 \
-            -dname "CN=LaundryOmHub,O=LaundryOmHub,L=Jaipur,S=Rajasthan,C=IN" -noprompt
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Using stored keystore from secret..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $GITHUB_WORKSPACE/android.keystore
+          else
+            echo "Generating new keystore (first run)..."
+            keytool -genkeypair -alias laundryomhub -keyalg RSA -keysize 2048 \
+              -validity 10000 -keystore $GITHUB_WORKSPACE/android.keystore \
+              -storepass laundry2024 -keypass laundry2024 \
+              -dname "CN=LaundryOmHub,O=LaundryOmHub,L=Jaipur,S=Rajasthan,C=IN" -noprompt
+          fi
+
+      - name: Print keystore fingerprint
+        run: |
+          echo "========================================"
+          echo "SHA-256 FINGERPRINT:"
+          keytool -list -v -keystore $GITHUB_WORKSPACE/android.keystore \
+            -alias laundryomhub -storepass laundry2024 2>/dev/null | grep "SHA256:"
+          echo "========================================"
 
       - name: Build signed AAB
         run: |
