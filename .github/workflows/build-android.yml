@@ -1,11 +1,145 @@
-      - name: Print keystore fingerprint
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK tools
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Create app module files
+        run: |
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/mipmap-hdpi
+          mkdir -p app/src/main/res/mipmap-xhdpi
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/mipmap-xxxhdpi
+          mkdir -p gradle/wrapper
+
+          { echo "plugins { id 'com.android.application' }"
+            echo "android {"
+            echo "  namespace 'com.laundryomhub.app'"
+            echo "  compileSdk 35"
+            echo "  defaultConfig {"
+            echo "    applicationId \"com.laundryomhub.app\""
+            echo "    minSdk 21"
+            echo "    targetSdk 35"
+            echo "    versionCode 2"
+            echo "    versionName \"1.0.1\""
+            echo "  }"
+            echo "  buildTypes { release { minifyEnabled false } }"
+            echo "  compileOptions {"
+            echo "    sourceCompatibility JavaVersion.VERSION_1_8"
+            echo "    targetCompatibility JavaVersion.VERSION_1_8"
+            echo "  }"
+            echo "}"
+            echo "dependencies {"
+            echo "  implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'"
+            echo "  implementation 'androidx.appcompat:appcompat:1.6.1'"
+            echo "}"; } > app/build.gradle
+
+          { echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+            echo '  <uses-permission android:name="android.permission.INTERNET" />'
+            echo '  <application android:label="LaundryOmHub" android:icon="@mipmap/ic_launcher"'
+            echo '    android:theme="@style/AppTheme" android:allowBackup="true">'
+            echo '    <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"'
+            echo '      android:exported="true" android:screenOrientation="portrait">'
+            echo '      <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"'
+            echo '        android:value="https://laundryomhub.com/" />'
+            echo '      <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"'
+            echo '        android:resource="@color/colorPrimary" />'
+            echo '      <intent-filter>'
+            echo '        <action android:name="android.intent.action.MAIN" />'
+            echo '        <category android:name="android.intent.category.LAUNCHER" />'
+            echo '      </intent-filter>'
+            echo '      <intent-filter android:autoVerify="true">'
+            echo '        <action android:name="android.intent.action.VIEW" />'
+            echo '        <category android:name="android.intent.category.DEFAULT" />'
+            echo '        <category android:name="android.intent.category.BROWSABLE" />'
+            echo '        <data android:scheme="https" android:host="laundryomhub.com" />'
+            echo '      </intent-filter>'
+            echo '    </activity>'
+            echo '    <service android:name="com.google.androidbrowserhelper.trusted.DelegationService"'
+            echo '      android:exported="true" android:enabled="true">'
+            echo '      <intent-filter>'
+            echo '        <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />'
+            echo '        <category android:name="android.intent.category.DEFAULT" />'
+            echo '      </intent-filter>'
+            echo '    </service>'
+            echo '  </application>'
+            echo '</manifest>'; } > app/src/main/AndroidManifest.xml
+
+          { echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<resources>'
+            echo '  <string name="app_name">LaundryOmHub</string>'
+            echo '</resources>'; } > app/src/main/res/values/strings.xml
+
+          { echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<resources>'
+            echo '  <color name="colorPrimary">#16a34a</color>'
+            echo '  <color name="colorBackground">#f0fdf4</color>'
+            echo '</resources>'; } > app/src/main/res/values/colors.xml
+
+          { echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<resources>'
+            echo '  <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">'
+            echo '    <item name="android:windowBackground">@color/colorBackground</item>'
+            echo '    <item name="colorPrimary">@color/colorPrimary</item>'
+            echo '  </style>'
+            echo '</resources>'; } > app/src/main/res/values/styles.xml
+
+          { echo 'distributionBase=GRADLE_USER_HOME'
+            echo 'distributionPath=wrapper/dists'
+            echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip'
+            echo 'zipStoreBase=GRADLE_USER_HOME'
+            echo 'zipStorePath=wrapper/dists'; } > gradle/wrapper/gradle-wrapper.properties
+
+          curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.6.0/gradlew" -o gradlew
+          curl -sL "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar" \
+            -o gradle/wrapper/gradle-wrapper.jar
+          chmod +x gradlew
+
+      - name: Download app icon
+        run: |
+          sudo apt-get install -y imagemagick
+          curl -L "https://laundryomhub.com/icon-512.png" -o /tmp/icon.png 2>/dev/null || \
+            convert -size 512x512 xc:#16a34a /tmp/icon.png
+          convert /tmp/icon.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert /tmp/icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Setup Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r\n ' | base64 -d > $GITHUB_WORKSPACE/android.keystore
+
+      - name: Print keystore fingerprint and PEM
         run: |
           echo "========================================"
           echo "SHA-256 FINGERPRINT:"
           keytool -list -v -keystore $GITHUB_WORKSPACE/android.keystore \
             -alias laundryomhub -storepass laundry2024 2>/dev/null | grep "SHA256:"
           echo "========================================"
-          echo "UPLOAD CERTIFICATE PEM (for Play Console key reset):"
+          echo "UPLOAD CERTIFICATE PEM:"
           echo "========================================"
           keytool -export -alias laundryomhub \
             -keystore $GITHUB_WORKSPACE/android.keystore \
@@ -14,3 +148,25 @@
           openssl x509 -inform DER -in /tmp/upload_cert.der -out /tmp/upload_cert.pem
           cat /tmp/upload_cert.pem
           echo "========================================"
+
+      - name: Build signed AAB
+        run: |
+          ./gradlew :app:bundleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android.keystore \
+            -Pandroid.injected.signing.store.password=laundry2024 \
+            -Pandroid.injected.signing.key.alias=laundryomhub \
+            -Pandroid.injected.signing.key.password=laundry2024
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaundryOmHub-release
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Upload Keystore
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-keystore
+          path: ${{ github.workspace }}/android.keystore
+          retention-days: 30
